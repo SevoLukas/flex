@@ -54,6 +54,14 @@ except ImportError:
 else:
     _werkzeug_available = True
 
+try:
+    import aiohttp.web_request
+    import aiohttp.web_response
+except ImportError:
+    _aiohttp_available = False
+else:
+    _aiohttp_available = True
+
 
 class URLMixin(object):
     @property
@@ -263,6 +271,22 @@ def _normalize_werkzeug_request(request):
     )
 
 
+def _normalize_aiohttp_request(request):
+    if not _aiohttp_available:
+        return TypeError("aiothhp is not installed")
+
+    if not isinstance(request, aiohttp.web_request.BaseRequest):
+        raise TypeError("Cannot normalize this request")
+
+    return Request(
+        url=str(request.url),
+        body=request.content,
+        method=request.method.lower(),
+        content_type=request.content_type,
+        request=request,
+    )
+
+
 REQUEST_NORMALIZERS = (
     _normalize_django_request,
     _normalize_python2_urllib_request,
@@ -272,6 +296,7 @@ REQUEST_NORMALIZERS = (
     _normalize_tornado_request,
     _normalize_falcon_request,
     _normalize_werkzeug_request,
+    _normalize_aiohttp_request,
 )
 
 
@@ -460,6 +485,26 @@ def _normalize_werkzeug_response(response, request=None):
     )
 
 
+def _normalize_aiohttp_response(response, request=None):
+    if not _aiohttp_available:
+        raise TypeError("aiohttp is not installed")
+
+    if not isinstance(response, aiohttp.web_response.StreamResponse):
+        raise TypeError("Cannot normalize this response object")
+
+    if request is None:
+        raise TypeError("Cannot normalize this response object")
+
+    return Response(
+        url=str(request.url),
+        request=request,
+        content=response.text,
+        status_code=response.status,
+        content_type=response.content_type,
+        response=response,
+    )
+
+
 RESPONSE_NORMALIZERS = (
     _normalize_django_response,
     _normalize_urllib_response,
@@ -467,6 +512,7 @@ RESPONSE_NORMALIZERS = (
     _normalize_webob_response,
     _normalize_tornado_response,
     _normalize_werkzeug_response,
+    _normalize_aiohttp_response,
 )
 
 
